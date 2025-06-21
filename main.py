@@ -5,6 +5,12 @@ import os
 import csv
 from datetime import datetime
 import time
+import pyttsx3  # Text-to-speech library
+
+# Initialize text-to-speech engine
+tts_engine = pyttsx3.init()
+tts_engine.setProperty('rate', 150)  # Adjust speech rate (words per minute)
+tts_engine.setProperty('volume', 0.9)  # Adjust volume (0.0 to 1.0)
 
 # Load known faces and their names from the 'faces' folder
 known_face_encodings = []
@@ -22,6 +28,10 @@ for filename in os.listdir('faces'):
 face_locations = []
 face_encodings = []
 face_names = []
+
+# Track announced names to avoid repeated announcements
+announced_names = set()
+last_announcement_time = {}
 
 # Start capturing video from the default camera (0)
 video_capture = cv2.VideoCapture(0)
@@ -48,6 +58,8 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
             face_encodings = face_recognition.face_encodings(frame, face_locations)
 
             face_names = []
+            current_time = time.time()
+            
             for face_encoding in face_encodings:
                 # Compare the face encoding to known faces
                 matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
@@ -60,7 +72,21 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
 
                 if matches[best_match_index]:
                     name = known_face_names[best_match_index]
-                    confidence = f"{100 - face_distances[best_match_index]:.2f}%"
+                    confidence = f"{100 - face_distances[best_match_index] * 100:.2f}%"
+                    
+                    # Announce the name if it hasn't been announced recently
+                    # Wait at least 5 seconds between announcements for the same person
+                    if (name not in last_announcement_time or 
+                        current_time - last_announcement_time[name] > 5):
+                        
+                        # Announce the detected person's name
+                        announcement = f"{name}, you are recognized."
+                        print(f"Announcing: {announcement}")
+                        tts_engine.say(announcement)
+                        tts_engine.runAndWait()
+                        
+                        # Update the last announcement time
+                        last_announcement_time[name] = current_time
 
                 face_names.append(f"{name} ({confidence})")
 
@@ -80,8 +106,8 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
             # Write to the CSV file every 10 seconds
             if time.time() - last_write_time >= 10:
                 for name in face_names:
-                    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    writer.writerow({'Name': name, 'Time': current_time})
+                    current_time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    writer.writerow({'Name': name, 'Time': current_time_str})
                 last_write_time = time.time()
 
         # Press 'q' to quit the program
@@ -91,3 +117,6 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
 # Release the camera and close all OpenCV windows
 video_capture.release()
 cv2.destroyAllWindows()
+
+# Stop the TTS engine
+tts_engine.stop()
