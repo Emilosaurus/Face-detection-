@@ -28,6 +28,8 @@ for filename in os.listdir('faces'):
 face_locations = []
 face_encodings = []
 face_names = []
+logged_names = set()
+# Initialize a set to keep track of logged names
 
 # Track announced names to avoid repeated announcements
 announced_names = set()
@@ -75,9 +77,9 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
                     confidence = f"{100 - face_distances[best_match_index] * 100:.2f}%"
                     
                     # Announce the name if it hasn't been announced recently
-                    # Wait at least 5 seconds between announcements for the same person
+                    # Wait at least 7 seconds between announcements for the same person
                     if (name not in last_announcement_time or 
-                        current_time - last_announcement_time[name] > 5):
+                        current_time - last_announcement_time[name] > 7):
                         
                         # Announce the detected person's name
                         announcement = f"{name}, you are recognized."
@@ -106,9 +108,13 @@ with open('face_log.csv', mode='w', newline='') as csv_file:
             # Write to the CSV file every 10 seconds
             if time.time() - last_write_time >= 10:
                 for name in face_names:
-                    current_time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    writer.writerow({'Name': name, 'Time': current_time_str})
-                last_write_time = time.time()
+                        pure_name = name.split(" (")[0]
+                        if pure_name != "Unknown" and pure_name not in logged_names:
+                            current_time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            writer.writerow({'Name': pure_name, 'Time': current_time_str})
+                            logged_names.add(pure_name)
+
+
 
         # Press 'q' to quit the program
         if cv2.waitKey(1) & 0xFF == ord('q'):
