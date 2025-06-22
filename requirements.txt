@@ -1,0 +1,4 @@
+opencv-python-headless
+opencv-contrib-python-headless
+dlib-gpu
+face_recognition
